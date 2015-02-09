@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project default="deploy" basedir=".">
+
+    <property name="tomcat.home" value="D:/Soft/tomcat/apache-tomcat-6.0.43"/>
+    <property name="tomcat.service.name" value="tomcat6"/>
+    <property name="tomcat.deployment" value="${tomcat.home}/webapps"/>
+    <property name="tomcat.bin" value="${tomcat.home}/bin"/>
+
+    <property name="dir.base" value="."/>
+    <property name="dir.build" value="${dir.base}/target"/>
+    <property name="dir.classes" value="${dir.build}/classes"/>
+    <property name="dir.source" value="${dir.base}/src/main/java/akvelontask"/>
+    <property name="dir.web" value="${dir.base}/src/main/webapp"/>
+    <property name="dir.lib" value="${dir.base}/lib"/>
+    <property name="file.jar" value="${dir.build}/main.module.jar"/>
+    <property name="dir.war.content" value="${dir.build}/war.content"/>
+    <property name="dir.xml.properties" value="${dir.base}/src/main/resources"/>
+    <property name="name.application" value="webtest"/>
+    <property name="file.war" value="${dir.build}/${name.application}.war"/>
+
+    <path id="allLibs">
+        <fileset dir="${dir.lib}">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+    <path id="libs.main.module">
+        <path refid="allLibs"/>
+    </path>
+
+    <target name="clean">
+        <delete dir="${dir.build}"/>
+    </target>
+    <target name="mkdirs">
+        <mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.classes}"/>
+        <mkdir dir="${dir.war.content}"/>
+    </target>
+    <target name="compile" depends="mkdirs">
+        <javac srcdir="${dir.source}" destdir="${dir.classes}">
+            <classpath>
+                <path refid="libs.main.module"/>
+            </classpath>
+        </javac>
+    </target>
+    <target name="build.war.content" depends="compile">
+        <copy todir="${dir.war.content}" preservelastmodified="true">
+            <fileset dir="${dir.web}"/>
+        </copy>
+        <copy todir="${dir.war.content}/WEB-INF/lib" preservelastmodified="true">
+            <fileset dir="${dir.lib}" excludes="servlet-api-2.5.jar"/>
+        </copy>
+        <copy todir="${dir.classes}" preservelastmodified="true">
+            <fileset dir="${dir.xml.properties}"/>
+        </copy>
+        <copy todir="${dir.war.content}/WEB-INF/classes" preservelastmodified="true">
+            <fileset dir="${dir.classes}"/>
+        </copy>
+    </target>
+    <target name="build.war" depends="build.war.content">
+        <delete file="${file.war}"/>
+        <war
+                compress="true"
+                encoding="utf-8"
+                warfile="${file.war}"
+                webxml="${dir.war.content}/WEB-INF/web.xml">
+            <fileset dir="${dir.war.content}" excludes="WEB-INF/web.xml"/>
+        </war>
+    </target>
+    <target name="deploy"
+            depends="build.war,do.undeploy.war,do.deploy.war">
+    </target>
+    <target name="do.undeploy.war">
+        <service.stop.win32 service.name="${tomcat.service.name}"/>
+        <delete file="${tomcat.deployment}/${name.application}.war" failonerror="false"/>
+        <delete dir="${tomcat.deployment}${name.application}" failonerror="false"/>
+    </target>
+    <target name="do.deploy.war">
+        <copy todir="${tomcat.deployment}" failonerror="yes">
+            <fileset file="${file.war}"/>
+        </copy>
+        <service.start.win32 service.name="${tomcat.service.name}"/>
+    </target>
+
+    <!-- macro -->
+
+    <macrodef name="service.stop.win32">
+        <attribute name="service.name"/>
+        <sequential>
+            <echo>Stoping service: @{service.name}</echo>
+            <exec executable="${tomcat.bin}/shutdown.bat" outputproperty="whatsRunning">
+                <env key="CATALINA_HOME" value="${tomcat.home}"/>
+            </exec>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="service.start.win32">
+        <attribute name="service.name"/>
+        <sequential>
+            <echo>Starting service: @{service.name}</echo>
+            <exec executable="${tomcat.bin}/startup.bat" failonerror="yes">
+                <env key="CATALINA_HOME" value="${tomcat.home}"/>
+            </exec>
+        </sequential>
+    </macrodef>
+</project>
